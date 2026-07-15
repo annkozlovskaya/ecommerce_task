@@ -5,8 +5,8 @@ Provides utilities for saving processed data
 to the final output destination.
 """
 
-from .loader import Loader
+from .loader import WorkWithFiles
 
 __all__ = [
-    "Loader",
+    "WorkWithFiles",
 ]

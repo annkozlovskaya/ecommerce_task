@@ -1,7 +1,8 @@
 from extract.file_extractor import EventLoader
 from extract.db_extractor import DatabaseLoader
 from transform.transformer import DataTransformer
-from load.loader import Loader
+from load.loader import WorkWithFiles
+import pandas as pd
 
 
 class Pipeline:
@@ -17,20 +18,33 @@ class Pipeline:
             user="myuser",
             password="mypassword",
         )
-
-        events_df = event_loader.load()
-
         products_df = db.load_products()
         customers_df = db.load_customers()
 
-        transformer = DataTransformer(events_df,
-        products_df,
-        customers_df)
+        for zip_folder in event_loader.read_json():
+            for json_data in zip_folder:
+                events_df = pd.DataFrame(json_data)
+                if "quantity" not in events_df.columns:
+                    events_df["quantity"] = pd.NA
+                try:
+                    temp_df = pd.read_csv("reports/temp_sales_report.csv")
+                except FileNotFoundError:
+                    temp_df = pd.DataFrame()
+                transformer = DataTransformer(events_df, 
+                temp_df, 
+                products_df,
+                customers_df)
 
-        report_df = transformer.transform()
+                report_df = transformer.transform()
 
-        loader = Loader("reports/sales_report.csv")
-        loader.save(report_df)
+                loader_template = WorkWithFiles("reports/temp_sales_report.csv")
+                loader_template.save(report_df)
+        
+        report_df = transformer.last_aggregation(report_df)
+        loader_result = WorkWithFiles("reports/sales_report_new.csv")
+        loader_result.save(report_df)
+        loader_template.delete("reports/temp_sales_report.csv")
+
 
 
 if __name__ == "__main__":
